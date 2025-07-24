@@ -1,62 +1,75 @@
-import NextAuth, { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
-import { compare } from 'bcrypt';
-import { prisma } from '@/lib/prisma';
-import type { JWT } from 'next-auth/jwt';
-import type { Session, User } from 'next-auth';
+// lib/auth.ts or wherever you store it
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
+import { compare } from "bcrypt";
 
 export const authOptions: NextAuthOptions = {
     adapter: PrismaAdapter(prisma),
     providers: [
         CredentialsProvider({
-            name: 'Credentials',
+            name: "Credentials",
             credentials: {
-                email: { label: 'Email', type: 'text', placeholder: 'your@email.com' },
-                password: { label: 'Password', type: 'password' },
+                email: { label: "Email", type: "text", placeholder: "your@email.com" },
+                password: { label: "Password", type: "password" },
             },
-            async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) return null;
+            authorize: async (credentials) => {
+                if (!credentials?.email || !credentials?.password) {
+                    throw new Error("Missing email or password");
+                }
 
                 const user = await prisma.user.findUnique({
                     where: { email: credentials.email },
                 });
 
-                if (!user || !user.passwordHash) return null;
+                if (!user || !user.passwordHash) {
+                    throw new Error("Invalid credentials");
+                }
 
                 const isValid = await compare(credentials.password, user.passwordHash);
-                if (!isValid) return null;
+                if (!isValid) {
+                    throw new Error("Incorrect password");
+                }
 
                 return {
                     id: user.id,
                     name: user.name,
                     email: user.email,
+                    image: user.image ?? null,
                     role: user.role,
-                } as User;
+                };
             },
         }),
+        GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
     ],
+    session: {
+        strategy: "jwt",
+    },
     pages: {
-        signIn: '/login',
+        signIn: "/auth/signin",
+        error: "/auth/error",
     },
     callbacks: {
-        async jwt({ token, user }: { token: JWT; user?: User }) {
+        async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
                 token.role = user.role;
             }
             return token;
         },
-        async session({ session, token }: { session: Session; token: JWT }) {
-            if (token && session.user) {
+        async session({ session, token }) {
+            if (session.user && token.id) {
                 session.user.id = token.id as string;
-                session.user.role = token.role as 'FREELANCER' | 'CLIENT';
+                session.user.role = token.role as "FREELANCER" | "CLIENT";
             }
             return session;
         },
     },
-    session: {
-        strategy: 'jwt',
-    },
     secret: process.env.NEXTAUTH_SECRET,
 };
+
