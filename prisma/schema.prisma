@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String    @unique
+  passwordHash         String
+  role                 Role
+  linkedFreelancerId   String? // For clients
+  projectsAsClient     Project[] @relation("ClientProjects")
+  projectsAsFreelancer Project[] @relation("FreelancerProjects")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  File File[]
+
+  Message Message[]
+
+  Invoice Invoice[]
+}
+
+model Project {
+  id           String        @id @default(uuid())
+  title        String
+  description  String
+  status       ProjectStatus @default(ACTIVE)
+  freelancer   User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
+  freelancerId String
+  client       User          @relation("ClientProjects", fields: [clientId], references: [id])
+  clientId     String
+  milestones   Milestone[]
+  files        File[]
+  messages     Message[]
+  invoices     Invoice[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model File {
+  id           String   @id @default(uuid())
+  label        String
+  url          String
+  type         String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+  project      Project  @relation(fields: [projectId], references: [id])
+  projectId    String
+  createdAt    DateTime @default(now())
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  message     String
+  sender      User     @relation(fields: [senderId], references: [id])
+  senderId    String
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String
+  attachments String[]
+  timestamp   DateTime @default(now())
+}
+
+model Invoice {
+  id          String        @id @default(uuid())
+  project     Project       @relation(fields: [projectId], references: [id])
+  projectId   String
+  issuedBy    User          @relation(fields: [issuedById], references: [id])
+  issuedById  String
+  items       Json
+  totalAmount Float
+  dueDate     DateTime
+  paymentLink String?
+  status      InvoiceStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+}
+
+model Milestone {
+  id        String    @id @default(uuid())
+  title     String
+  completed Boolean   @default(false)
+  dueDate   DateTime?
+  project   Project   @relation(fields: [projectId], references: [id])
+  projectId String
+}
+
+enum Role {
+  FREELANCER
+  CLIENT
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum InvoiceStatus {
+  PAID
+  PENDING
+}
