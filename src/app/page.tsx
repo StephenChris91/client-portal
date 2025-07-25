@@ -1,12 +1,23 @@
-// import Image from "next/image";
-import SignInPage from "./auth/signin/page";
+// app/page.tsx
 
-export default function Home() {
+import HeroSection from "@/components/ui/sections/landing/HeroSection";
+import DashboardPreview from "@/components/ui/sections/landing/DashboardPreview";
+import ProblemSection from "@/components/ui/sections/landing/ProblemSection";
+import SolutionCards from "@/components/ui/sections/landing/SolutionCards";
+import FAQSection from "@/components/ui/sections/landing/FAQSection";
+import Footer from "@/components/ui/sections/landing/Footer";
+import Navbar from "@/components/ui/sections/landing/Navbar";
+
+export default function LandingPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold">Welcome to the Client Portal</h1>
-      <p className="mt-4 text-lg">This is your dashboard.</p>
-      <SignInPage />
+    <main className="flex flex-col overflow-x-hidden">
+      <Navbar />
+      <HeroSection />
+      <DashboardPreview />
+      <ProblemSection />
+      <SolutionCards />
+      <FAQSection />
+      <Footer />
     </main>
   );
 }
